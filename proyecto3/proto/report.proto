@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package report;
+
+option go_package = "example.com/mumnk8s/proto;reportpb";
+
+service ReportService {
+  rpc SubmitReport(ReportRequest) returns (ReportResponse);
+}
+
+message ReportRequest {
+  string country_code = 1;
+  int32 warplanes_in_air = 2;
+  int32 warships_in_water = 3;
+  int64 timestamp_unix = 4;
+}
+
+message ReportResponse {
+  bool accepted = 1;
+  string message = 2;
+  string report_id = 3;
+}
