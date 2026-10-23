@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-exporter
+  namespace: mumnk8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-exporter
+  template:
+    metadata:
+      labels:
+        app: metrics-exporter
+    spec:
+      containers:
+        - name: metrics-exporter
+          image: mumnk8s-metrics-exporter:local
+          imagePullPolicy: Never
+          ports:
+            - name: metrics
+              containerPort: 9100
+          env:
+            - name: VALKEY_ADDR
+              value: "valkey:6379"
+            - name: METRICS_ADDR
+              value: ":9100"
+            - name: ASSIGNED_COUNTRY
+              value: "ESP"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-exporter
+  namespace: mumnk8s
+spec:
+  selector:
+    app: metrics-exporter
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+  type: ClusterIP

@@ -18,3 +18,9 @@ proyecto3/**/bin/
 # Archivos locales
 .DS_Store
 *.log
+
+# Binarios locales de Minikube
+/minikube-linux-amd64
+
+# Archivos temporales de Kubernetes
+*.kubeconfig
