@@ -1,0 +1,9 @@
+.git
+**/target
+**/.venv
+**/__pycache__
+**/*.pyc
+**/bin
+**/.idea
+**/.vscode
+**/*.log

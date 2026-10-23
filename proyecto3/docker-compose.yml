@@ -33,6 +33,85 @@ services:
       retries: 10
     restart: unless-stopped
 
+  grpc-server:
+    image: mumnk8s-grpc-server:local
+    container_name: p3-grpc-server
+    environment:
+      RABBITMQ_URL: amqp://p3user:p3localpass@rabbitmq:5672/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "50051:50051"
+    restart: unless-stopped
+
+  consumer:
+    image: mumnk8s-consumer:local
+    container_name: p3-consumer
+    environment:
+      RABBITMQ_URL: amqp://p3user:p3localpass@rabbitmq:5672/
+      VALKEY_ADDR: valkey:6379
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-go:
+    image: mumnk8s-api-go:local
+    container_name: p3-api-go
+    environment:
+      GRPC_SERVER_ADDR: grpc-server:50051
+      HTTP_ADDR: :8080
+    depends_on:
+      - grpc-server
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  api-rust:
+    image: mumnk8s-api-rust:local
+    container_name: p3-api-rust
+    environment:
+      GO_API_URL: http://api-go:8080
+      RUST_API_ADDR: 0.0.0.0:8000
+    depends_on:
+      - api-go
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  metrics-exporter:
+    image: mumnk8s-metrics-exporter:local
+    container_name: p3-metrics-exporter
+    environment:
+      VALKEY_ADDR: valkey:6379
+      METRICS_ADDR: :9100
+      ASSIGNED_COUNTRY: ESP
+    depends_on:
+      valkey:
+        condition: service_healthy
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: p3-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - metrics-exporter
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:latest
     container_name: p3-grafana
@@ -47,22 +126,6 @@ services:
     depends_on:
       valkey:
         condition: service_healthy
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: p3-prometheus
-    ports:
-      - "9090:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-lifecycle"
     restart: unless-stopped
 
 volumes:
